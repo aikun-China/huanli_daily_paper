@@ -1,0 +1,17 @@
+{
+  "ip": "starrail",
+  "local_id": "002",
+  "global_id": "starrail_002",
+  "name": "丹恒",
+  "name_en": "Dan Heng",
+  "work": "崩坏：星穹铁道",
+  "tags": [
+    "风系",
+    "巡猎",
+    "少年",
+    "列车组"
+  ],
+  "quote": "不必多言。",
+  "description": "列车上的护卫",
+  "image_file": "002.png"
+}

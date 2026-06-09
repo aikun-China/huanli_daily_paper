@@ -529,10 +529,12 @@ class DailyRenderer:
 
         # 保存
         date_str = datetime.now().strftime("%Y-%m-%d")
-        output_dir = DATA_PATH / "daily_paper" / "output" / date_str
+        output_dir = (DATA_PATH / "daily_paper" / "output" / date_str).resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         output_path = output_dir / f"{data.get('group_id', 'default')}.png"
+        output_path = output_path.resolve()
         img.save(str(output_path))
 
         return str(output_path)
@@ -810,7 +812,10 @@ async def handle_daily(event: GroupMessageEvent):
 
     try:
         image_path, data = await generate_daily(group_id)
-        await daily_cmd.send(MessageSegment.image(f"file://{image_path}"))
+        # NapCat/Windows 兼容性处理：读取图片bytes发送
+        with open(image_path, "rb") as img_f:
+            img_bytes = img_f.read()
+        await daily_cmd.send(MessageSegment.image(img_bytes))
 
         # 发送投票引导
         if data.get("vote"):
