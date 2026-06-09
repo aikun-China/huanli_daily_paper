@@ -21,6 +21,7 @@ from nonebot.adapters.onebot.v11 import (
 from nonebot.permission import SUPERUSER
 from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
+from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER
 
 # 真寻bot特有导入
 from zhenxun.services.log import logger
@@ -28,7 +29,6 @@ from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils._image_template import ImageTemplate
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.path_config import DATA_PATH, IMAGE_PATH
-
 require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
 
@@ -574,29 +574,29 @@ class DailyRenderer:
         """绘制标题"""
         # 日期
         await img.text((30, y), data.get("date", ""), fill=self.COLORS["text_light"], font_size=18)
-        y += 30
+        y += 35
 
         # 主标题
         title = "幻璃次元日报"
         await img.text((self.WIDTH // 2, y), title, fill=self.COLORS["primary"], 
                 font_size=48, center_type="center")
-        y += 60
+        y += 75
 
         # 副标题
         subtitle = data.get("title", "")
         if subtitle:
             await img.text((self.WIDTH // 2, y), subtitle, fill=self.COLORS["text_dark"],
                     font_size=24, center_type="center")
-            y += 40
+            y += 45
 
-        return y + 10
+        return y + 15
 
     async def _draw_countdowns(self, img: BuildImage, countdowns: List[Dict], y: int) -> int:
         """绘制倒计时卡片"""
         if not countdowns:
             return y
 
-        card_h = 120
+        card_h = 140
         card_w = (self.WIDTH - 60) // min(len(countdowns), 4) - 10
 
         for i, cd in enumerate(countdowns[:4]):
@@ -608,7 +608,7 @@ class DailyRenderer:
             await card.circle_corner(12)
 
             # 名称
-            await card.text((card_w // 2, 20), cd.get("name", ""), 
+            await card.text((card_w // 2, 25), cd.get("name", ""), 
                      fill=self.COLORS["text_light"], font_size=16, center_type="center")
 
             # 天数
@@ -618,22 +618,22 @@ class DailyRenderer:
             elif "暑假" in cd.get("name", ""):
                 color = self.COLORS["summer"]
 
-            await card.text((card_w // 2, 60), str(cd.get("days", 0)), 
+            await card.text((card_w // 2, 65), str(cd.get("days", 0)), 
                      fill=color, font_size=48, center_type="center")
 
-            await card.text((card_w // 2, 95), "天", 
+            await card.text((card_w // 2, 105), "天", 
                      fill=self.COLORS["text_light"], font_size=16, center_type="center")
 
             await img.paste(card, (x, y))
 
-        return y + card_h + 20
+        return y + card_h + 25
 
     async def _draw_event(self, img: BuildImage, event: Optional[Dict], y: int) -> int:
         """绘制大事件"""
         if not event:
             return y
 
-        card_h = 180
+        card_h = 200
         card = BuildImage(self.WIDTH - 60, card_h, color=self.COLORS["card_bg"])
         await card.circle_corner(12)
 
@@ -644,31 +644,31 @@ class DailyRenderer:
         await card.paste(tag, (10, 10))
 
         # 标题
-        await card.text((10, 45), event.get("title", ""), 
+        await card.text((10, 50), event.get("title", ""), 
                  fill=self.COLORS["text_dark"], font_size=20)
 
         # 摘要
         summary = event.get("summary", "")
         if len(summary) > 50:
             summary = summary[:50] + "..."
-        await card.text((10, 80), summary, fill=self.COLORS["text_light"], font_size=16)
+        await card.text((10, 90), summary, fill=self.COLORS["text_light"], font_size=16)
 
         await img.paste(card, (30, y))
-        return y + card_h + 20
+        return y + card_h + 25
 
     async def _draw_character(self, img: BuildImage, character: Optional[Dict], y: int) -> int:
         """绘制今日角色"""
         if not character:
             return y
 
-        card_h = 260
+        card_h = 280
         card = BuildImage(self.WIDTH - 60, card_h, color=self.COLORS["card_bg"])
         await card.circle_corner(12)
 
         # 角色名
-        await card.text((10, 15), character.get("name", ""), 
+        await card.text((10, 20), character.get("name", ""), 
                  fill=self.COLORS["primary"], font_size=28)
-        await card.text((10, 50), f"《{character.get('work', '')}》", 
+        await card.text((10, 60), f"《{character.get('work', '')}》", 
                  fill=self.COLORS["text_light"], font_size=16)
 
         # 标签
@@ -680,19 +680,19 @@ class DailyRenderer:
             await tag_img.circle_corner(4)
             await tag_img.text((tag_w // 2, 12), tag, fill=(255, 255, 255), 
                         font_size=12, center_type="center")
-            await card.paste(tag_img, (tag_x, 80))
+            await card.paste(tag_img, (tag_x, 95))
             tag_x += tag_w + 8
 
         # 台词
         quote = character.get("quote", "")
-        await card.text((10, 120), f'"{quote}"', 
+        await card.text((10, 135), f'"{quote}"', 
                  fill=self.COLORS["accent"], font_size=18)
 
         # 描述
         desc = character.get("description", "")
         if len(desc) > 40:
             desc = desc[:40] + "..."
-        await card.text((10, 155), desc, fill=self.COLORS["text_light"], font_size=14)
+        await card.text((10, 175), desc, fill=self.COLORS["text_light"], font_size=14)
 
         # 角色立绘（右侧）
         char_img_path = ASSETS_DIR / "characters" / character.get("ip", "") / character.get("image_file", "")
@@ -700,46 +700,46 @@ class DailyRenderer:
             try:
                 char_img = BuildImage(0, 0, background=str(char_img_path))
                 await char_img.resize(150, 200)
-                await card.paste(char_img, (card.w - 170, 30))
+                await card.paste(char_img, (card.w - 170, 40))
             except Exception:
                 pass
 
         await img.paste(card, (30, y))
-        return y + card_h + 20
+        return y + card_h + 25
 
     async def _draw_trivia(self, img: BuildImage, trivia: Optional[Dict], y: int) -> int:
         """绘制冷知识"""
         if not trivia:
             return y
 
-        card_h = 80
+        card_h = 100
         card = BuildImage(self.WIDTH - 60, card_h, color=self.COLORS["card_bg"])
         await card.circle_corner(12)
 
-        await card.text((10, 10), "💡 一句话冷知识", 
+        await card.text((10, 15), "💡 一句话冷知识", 
                  fill=self.COLORS["primary"], font_size=14)
 
         content = trivia.get("content", "")
         if len(content) > 50:
             content = content[:50] + "..."
-        await card.text((10, 35), content, fill=self.COLORS["text_dark"], font_size=16)
+        await card.text((10, 45), content, fill=self.COLORS["text_dark"], font_size=16)
 
         await img.paste(card, (30, y))
-        return y + card_h + 20
+        return y + card_h + 25
 
     async def _draw_vote(self, img: BuildImage, vote: Optional[Dict], y: int) -> int:
         """绘制投票"""
         if not vote:
             return y
 
-        card_h = 160
+        card_h = 180
         card = BuildImage(self.WIDTH - 60, card_h, color=self.COLORS["card_bg"])
         await card.circle_corner(12)
 
-        await card.text((10, 10), "💬 今日互动", 
+        await card.text((10, 15), "💬 今日互动", 
                  fill=self.COLORS["primary"], font_size=14)
 
-        await card.text((10, 35), vote.get("question", ""), 
+        await card.text((10, 45), vote.get("question", ""), 
                  fill=self.COLORS["text_dark"], font_size=18)
 
         # 选项按钮
@@ -754,20 +754,19 @@ class DailyRenderer:
             await btn.circle_corner(8)
             await btn.text((btn_w // 2, 17), f"{key} {text}", 
                     fill=(255, 255, 255), font_size=14, center_type="center")
-            await card.paste(btn, (x, 80))
+            await card.paste(btn, (x, 100))
             x += btn_w + 10
 
-        await card.text((10, 125), "回复选项参与投票，明日公布结果！", 
+        await card.text((10, 145), "回复选项参与投票，明日公布结果！", 
                  fill=self.COLORS["text_light"], font_size=14)
 
         await img.paste(card, (30, y))
-        return y + card_h + 20    
+        return y + card_h + 25   
     async def _draw_footer(self, img: BuildImage, y: int):
         """绘制底部"""
         await img.text((self.WIDTH // 2, self.HEIGHT - 30), 
                 "幻璃次元日报 | 每日更新",
-                fill=self.COLORS["text_light"], fontsize=14, center_type="center")
-
+                fill=self.COLORS["text_light"], font_size=14, center_type="center")
 # ========== 日报生成核心 ==========
 
 async def generate_daily(group_id: str) -> Tuple[str, Dict]:
@@ -778,6 +777,22 @@ async def generate_daily(group_id: str) -> Tuple[str, Dict]:
         (图片路径, 日报数据)
     """
     logger.info(f"开始为群 {group_id} 生成日报")
+    
+    # 检查缓存
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    cache_file = CACHE_DIR / f"{group_id}_{date_str}.json"
+    
+    if cache_file.exists():
+        try:
+            with open(cache_file, "r", encoding="utf-8") as f:
+                cache_data = json.load(f)
+            
+            image_path = cache_data.get("image_path", "")
+            if image_path and Path(image_path).exists():
+                logger.info(f"使用缓存的日报: {image_path}")
+                return image_path, cache_data.get("daily_data", {})
+        except Exception as e:
+            logger.warning(f"读取缓存失败: {e}")
     
     config = load_group_config(group_id)
 
@@ -836,9 +851,22 @@ async def generate_daily(group_id: str) -> Tuple[str, Dict]:
     image_path = await renderer.render(daily_data)
     logger.info(f"图片渲染完成: {image_path}")
 
+    # 9. 保存缓存
+    try:
+        cache_data = {
+            "group_id": group_id,
+            "date": date_str,
+            "image_path": image_path,
+            "daily_data": daily_data,
+            "created_at": datetime.now().isoformat()
+        }
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f, ensure_ascii=False, indent=2)
+        logger.info(f"日报缓存已保存: {cache_file}")
+    except Exception as e:
+        logger.warning(f"保存缓存失败: {e}")
+
     return image_path, daily_data
-
-
 # ========== 命令注册 ==========
 
 # 手动触发日报
@@ -894,8 +922,10 @@ async def handle_character(event: GroupMessageEvent):
     await character_cmd.send(msg)
 
 
-# 日报设置（管理员）
-config_cmd = on_command("日报设置", permission=SUPERUSER, priority=5, block=True)
+
+
+# 日报设置（群管理/超管）
+config_cmd = on_command("日报设置", permission=GROUP_ADMIN | GROUP_OWNER | SUPERUSER, priority=5, block=True)
 
 @config_cmd.handle()
 async def handle_config(event: GroupMessageEvent, args: Message = CommandArg()):
@@ -942,8 +972,6 @@ async def handle_config(event: GroupMessageEvent, args: Message = CommandArg()):
 
     save_group_config(group_id, config)
     await config_cmd.send(f"✅ 配置已更新：{key} = {value}")
-
-
 # 投票处理
 vote_pattern = on_command("投票", priority=5, block=True)
 
@@ -994,6 +1022,9 @@ async def scheduled_daily():
             continue
 
         try:
+            # 先清理前一天的缓存
+            await _clean_yesterday_cache(group_id)
+            
             image_path, data = await generate_daily(group_id)
 
             # 获取bot实例发送消息
@@ -1004,6 +1035,31 @@ async def scheduled_daily():
         except Exception as e:
             logger.error(f"定时发送日报失败 {group_id}: {e}")
 
+
+async def _clean_yesterday_cache(group_id: str):
+    """清理指定群前一天的缓存"""
+    try:
+        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        cache_file = CACHE_DIR / f"{group_id}_{yesterday}.json"
+        
+        if cache_file.exists():
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    cache_data = json.load(f)
+                
+                # 删除缓存文件
+                cache_file.unlink()
+                
+                # 删除对应的图片
+                image_path = cache_data.get("image_path", "")
+                if image_path and Path(image_path).exists():
+                    Path(image_path).unlink()
+                
+                logger.info(f"已清理群 {group_id} 的昨日缓存")
+            except Exception as e:
+                logger.warning(f"清理缓存文件失败: {e}")
+    except Exception as e:
+        logger.error(f"清理昨日缓存异常: {e}")
 
 
 
