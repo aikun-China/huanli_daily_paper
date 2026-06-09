@@ -1,0 +1,17 @@
+{
+  "ip": "vocaloid",
+  "local_id": "002",
+  "global_id": "vocaloid_002",
+  "name": "洛天依",
+  "name_en": "Luo Tianyi",
+  "work": "VOCALOID",
+  "tags": [
+    "虚拟歌手",
+    "天依蓝",
+    "吃货",
+    "Vsinger"
+  ],
+  "quote": "天依蓝，是专属于我的颜色哦~",
+  "description": "Vsinger旗下中文虚拟歌手",
+  "image_file": "002.png"
+}
