@@ -494,68 +494,99 @@ class DailyRenderer:
 
     async def render(self, data: Dict) -> str:
         """渲染日报并返回图片路径"""
+        logger.info("开始渲染日报图片")
+        
         # 使用真寻的BuildImage
         img = BuildImage(self.WIDTH, self.HEIGHT, color=self.COLORS["bg"])
 
         # 加载底图
         bg_path = self.theme_dir / "bg.png"
         if bg_path.exists():
+            logger.info("加载背景图片")
             bg = BuildImage(0, 0, background=str(bg_path))
-            bg.resize(self.WIDTH, self.HEIGHT)
-            img.paste(bg, (0, 0))
+            await bg.resize(self.WIDTH, self.HEIGHT)
+            await img.paste(bg, (0, 0))
 
         y = 20
 
         # 1. 标题区
+        logger.info("绘制标题区")
         y = await self._draw_header(img, data, y)
 
         # 2. 倒计时
+        logger.info("绘制倒计时")
         y = await self._draw_countdowns(img, data.get("countdowns", []), y)
 
         # 3. 大事件
+        logger.info("绘制大事件")
         y = await self._draw_event(img, data.get("event"), y)
 
         # 4. 今日角色
+        logger.info("绘制今日角色")
         y = await self._draw_character(img, data.get("character"), y)
 
         # 5. 冷知识
+        logger.info("绘制冷知识")
         y = await self._draw_trivia(img, data.get("trivia"), y)
 
         # 6. 投票
+        logger.info("绘制投票")
         y = await self._draw_vote(img, data.get("vote"), y)
 
         # 7. 底部
+        logger.info("绘制底部")
         await self._draw_footer(img, y)
 
         # 保存
         date_str = datetime.now().strftime("%Y-%m-%d")
-        output_dir = (DATA_PATH / "daily_paper" / "output" / date_str).resolve()
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_dir.mkdir(parents=True, exist_ok=True)
+        group_id = data.get('group_id', 'default')
 
-        output_path = output_dir / f"{data.get('group_id', 'default')}.png"
-        output_path = output_path.resolve()
-        img.save(str(output_path))
+        # 使用真寻 DATA_PATH 或备用到插件目录
+        try:
+            output_dir = DATA_PATH / "daily_paper" / "output" / date_str
+            output_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.warning(f"DATA_PATH不可用，使用插件目录: {e}")
+            output_dir = PLUGIN_DIR / "output" / date_str
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_path = output_dir / f"{group_id}.png"
+
+        logger.info(f"正在保存日报到: {output_path}")
+
+        try:
+            await img.save(str(output_path))
+            logger.info(f"日报保存成功: {output_path}")
+        except Exception as e:
+            logger.error(f"BuildImage.save失败: {e}")
+            # 备用：使用PIL直接保存
+            try:
+                pil_img = img.markImg if hasattr(img, 'markImg') else img
+                if hasattr(pil_img, 'save'):
+                    pil_img.save(str(output_path))
+                    logger.info(f"PIL保存成功: {output_path}")
+            except Exception as e2:
+                logger.error(f"PIL保存也失败: {e2}")
+                raise
 
         return str(output_path)
-
     async def _draw_header(self, img: BuildImage, data: Dict, y: int) -> int:
         """绘制标题"""
         # 日期
-        img.text((30, y), data.get("date", ""), fill=self.COLORS["text_light"], fontsize=18)
+        await img.text((30, y), data.get("date", ""), fill=self.COLORS["text_light"], font_size=18)
         y += 30
 
         # 主标题
         title = "幻璃次元日报"
-        img.text((self.WIDTH // 2, y), title, fill=self.COLORS["primary"], 
-                fontsize=48, center_type="center")
+        await img.text((self.WIDTH // 2, y), title, fill=self.COLORS["primary"], 
+                font_size=48, center_type="center")
         y += 60
 
         # 副标题
         subtitle = data.get("title", "")
         if subtitle:
-            img.text((self.WIDTH // 2, y), subtitle, fill=self.COLORS["text_dark"],
-                    fontsize=24, center_type="center")
+            await img.text((self.WIDTH // 2, y), subtitle, fill=self.COLORS["text_dark"],
+                    font_size=24, center_type="center")
             y += 40
 
         return y + 10
@@ -574,11 +605,11 @@ class DailyRenderer:
             # 卡片背景
             card = BuildImage(card_w, card_h, color=self.COLORS["card_bg"], 
                             font_size=18)
-            card.circle_corner(12)
+            await card.circle_corner(12)
 
             # 名称
-            card.text((card_w // 2, 20), cd.get("name", ""), 
-                     fill=self.COLORS["text_light"], fontsize=16, center_type="center")
+            await card.text((card_w // 2, 20), cd.get("name", ""), 
+                     fill=self.COLORS["text_light"], font_size=16, center_type="center")
 
             # 天数
             color = self.COLORS["event"]
@@ -587,13 +618,13 @@ class DailyRenderer:
             elif "暑假" in cd.get("name", ""):
                 color = self.COLORS["summer"]
 
-            card.text((card_w // 2, 60), str(cd.get("days", 0)), 
-                     fill=color, fontsize=48, center_type="center")
+            await card.text((card_w // 2, 60), str(cd.get("days", 0)), 
+                     fill=color, font_size=48, center_type="center")
 
-            card.text((card_w // 2, 95), "天", 
-                     fill=self.COLORS["text_light"], fontsize=16, center_type="center")
+            await card.text((card_w // 2, 95), "天", 
+                     fill=self.COLORS["text_light"], font_size=16, center_type="center")
 
-            img.paste(card, (x, y))
+            await img.paste(card, (x, y))
 
         return y + card_h + 20
 
@@ -604,25 +635,25 @@ class DailyRenderer:
 
         card_h = 180
         card = BuildImage(self.WIDTH - 60, card_h, color=self.COLORS["card_bg"])
-        card.circle_corner(12)
+        await card.circle_corner(12)
 
         # NEW标签
         tag = BuildImage(50, 25, color=self.COLORS["accent"])
-        tag.circle_corner(4)
-        tag.text((25, 12), "NEW", fill=(255, 255, 255), fontsize=14, center_type="center")
-        card.paste(tag, (10, 10))
+        await tag.circle_corner(4)
+        await tag.text((25, 12), "NEW", fill=(255, 255, 255), font_size=14, center_type="center")
+        await card.paste(tag, (10, 10))
 
         # 标题
-        card.text((10, 45), event.get("title", ""), 
-                 fill=self.COLORS["text_dark"], fontsize=20)
+        await card.text((10, 45), event.get("title", ""), 
+                 fill=self.COLORS["text_dark"], font_size=20)
 
         # 摘要
         summary = event.get("summary", "")
         if len(summary) > 50:
             summary = summary[:50] + "..."
-        card.text((10, 80), summary, fill=self.COLORS["text_light"], fontsize=16)
+        await card.text((10, 80), summary, fill=self.COLORS["text_light"], font_size=16)
 
-        img.paste(card, (30, y))
+        await img.paste(card, (30, y))
         return y + card_h + 20
 
     async def _draw_character(self, img: BuildImage, character: Optional[Dict], y: int) -> int:
@@ -632,13 +663,13 @@ class DailyRenderer:
 
         card_h = 260
         card = BuildImage(self.WIDTH - 60, card_h, color=self.COLORS["card_bg"])
-        card.circle_corner(12)
+        await card.circle_corner(12)
 
         # 角色名
-        card.text((10, 15), character.get("name", ""), 
-                 fill=self.COLORS["primary"], fontsize=28)
-        card.text((10, 50), f"《{character.get('work', '')}》", 
-                 fill=self.COLORS["text_light"], fontsize=16)
+        await card.text((10, 15), character.get("name", ""), 
+                 fill=self.COLORS["primary"], font_size=28)
+        await card.text((10, 50), f"《{character.get('work', '')}》", 
+                 fill=self.COLORS["text_light"], font_size=16)
 
         # 标签
         tags = character.get("tags", [])[:3]
@@ -646,34 +677,34 @@ class DailyRenderer:
         for tag in tags:
             tag_w = len(tag) * 16 + 20
             tag_img = BuildImage(tag_w, 25, color=self.COLORS["primary"])
-            tag_img.circle_corner(4)
-            tag_img.text((tag_w // 2, 12), tag, fill=(255, 255, 255), 
-                        fontsize=12, center_type="center")
-            card.paste(tag_img, (tag_x, 80))
+            await tag_img.circle_corner(4)
+            await tag_img.text((tag_w // 2, 12), tag, fill=(255, 255, 255), 
+                        font_size=12, center_type="center")
+            await card.paste(tag_img, (tag_x, 80))
             tag_x += tag_w + 8
 
         # 台词
         quote = character.get("quote", "")
-        card.text((10, 120), f'"{quote}"', 
-                 fill=self.COLORS["accent"], fontsize=18)
+        await card.text((10, 120), f'"{quote}"', 
+                 fill=self.COLORS["accent"], font_size=18)
 
         # 描述
         desc = character.get("description", "")
         if len(desc) > 40:
             desc = desc[:40] + "..."
-        card.text((10, 155), desc, fill=self.COLORS["text_light"], fontsize=14)
+        await card.text((10, 155), desc, fill=self.COLORS["text_light"], font_size=14)
 
         # 角色立绘（右侧）
         char_img_path = ASSETS_DIR / "characters" / character.get("ip", "") / character.get("image_file", "")
         if char_img_path.exists():
             try:
                 char_img = BuildImage(0, 0, background=str(char_img_path))
-                char_img.resize(150, 200)
-                card.paste(char_img, (card.w - 170, 30))
+                await char_img.resize(150, 200)
+                await card.paste(char_img, (card.w - 170, 30))
             except Exception:
                 pass
 
-        img.paste(card, (30, y))
+        await img.paste(card, (30, y))
         return y + card_h + 20
 
     async def _draw_trivia(self, img: BuildImage, trivia: Optional[Dict], y: int) -> int:
@@ -683,17 +714,17 @@ class DailyRenderer:
 
         card_h = 80
         card = BuildImage(self.WIDTH - 60, card_h, color=self.COLORS["card_bg"])
-        card.circle_corner(12)
+        await card.circle_corner(12)
 
-        card.text((10, 10), "💡 一句话冷知识", 
-                 fill=self.COLORS["primary"], fontsize=14)
+        await card.text((10, 10), "💡 一句话冷知识", 
+                 fill=self.COLORS["primary"], font_size=14)
 
         content = trivia.get("content", "")
         if len(content) > 50:
             content = content[:50] + "..."
-        card.text((10, 35), content, fill=self.COLORS["text_dark"], fontsize=16)
+        await card.text((10, 35), content, fill=self.COLORS["text_dark"], font_size=16)
 
-        img.paste(card, (30, y))
+        await img.paste(card, (30, y))
         return y + card_h + 20
 
     async def _draw_vote(self, img: BuildImage, vote: Optional[Dict], y: int) -> int:
@@ -703,13 +734,13 @@ class DailyRenderer:
 
         card_h = 160
         card = BuildImage(self.WIDTH - 60, card_h, color=self.COLORS["card_bg"])
-        card.circle_corner(12)
+        await card.circle_corner(12)
 
-        card.text((10, 10), "💬 今日互动", 
-                 fill=self.COLORS["primary"], fontsize=14)
+        await card.text((10, 10), "💬 今日互动", 
+                 fill=self.COLORS["primary"], font_size=14)
 
-        card.text((10, 35), vote.get("question", ""), 
-                 fill=self.COLORS["text_dark"], fontsize=18)
+        await card.text((10, 35), vote.get("question", ""), 
+                 fill=self.COLORS["text_dark"], font_size=18)
 
         # 选项按钮
         options = vote.get("options", {})
@@ -720,24 +751,22 @@ class DailyRenderer:
         for i, (key, text) in enumerate(options.items()):
             color = colors[i % len(colors)]
             btn = BuildImage(btn_w, 35, color=color)
-            btn.circle_corner(8)
-            btn.text((btn_w // 2, 17), f"{key} {text}", 
-                    fill=(255, 255, 255), fontsize=14, center_type="center")
-            card.paste(btn, (x, 80))
+            await btn.circle_corner(8)
+            await btn.text((btn_w // 2, 17), f"{key} {text}", 
+                    fill=(255, 255, 255), font_size=14, center_type="center")
+            await card.paste(btn, (x, 80))
             x += btn_w + 10
 
-        card.text((10, 125), "回复选项参与投票，明日公布结果！", 
-                 fill=self.COLORS["text_light"], fontsize=14)
+        await card.text((10, 125), "回复选项参与投票，明日公布结果！", 
+                 fill=self.COLORS["text_light"], font_size=14)
 
-        img.paste(card, (30, y))
-        return y + card_h + 20
-
+        await img.paste(card, (30, y))
+        return y + card_h + 20    
     async def _draw_footer(self, img: BuildImage, y: int):
         """绘制底部"""
-        img.text((self.WIDTH // 2, self.HEIGHT - 30), 
+        await img.text((self.WIDTH // 2, self.HEIGHT - 30), 
                 "幻璃次元日报 | 每日更新",
                 fill=self.COLORS["text_light"], fontsize=14, center_type="center")
-
 
 # ========== 日报生成核心 ==========
 
@@ -748,32 +777,40 @@ async def generate_daily(group_id: str) -> Tuple[str, Dict]:
     Returns:
         (图片路径, 日报数据)
     """
+    logger.info(f"开始为群 {group_id} 生成日报")
+    
     config = load_group_config(group_id)
 
     if not config.get("enabled", False):
         raise Exception("本群日报未启用")
 
     # 1. 抽取角色
+    logger.info("抽取角色")
     picker = CharacterPicker(config)
     character = picker.pick()
 
     # 2. 抽取事件
+    logger.info("抽取事件")
     event_picker = EventPicker(config)
     event = event_picker.pick()
 
     # 3. 检查节日
+    logger.info("检查节日")
     holiday_checker = HolidayChecker()
     holiday = holiday_checker.check_today()
 
     # 4. 倒计时
+    logger.info("计算倒计时")
     countdown_calc = CountdownCalculator(config)
     countdowns = countdown_calc.calculate()
 
     # 5. 冷知识
+    logger.info("抽取冷知识")
     trivia_picker = TriviaPicker(config)
     trivia = trivia_picker.pick()
 
     # 6. 投票
+    logger.info("抽取投票")
     vote_manager = VoteManager(config)
     vote = vote_manager.pick_question()
 
@@ -794,8 +831,10 @@ async def generate_daily(group_id: str) -> Tuple[str, Dict]:
     }
 
     # 8. 渲染
+    logger.info("开始渲染图片")
     renderer = DailyRenderer(config)
     image_path = await renderer.render(daily_data)
+    logger.info(f"图片渲染完成: {image_path}")
 
     return image_path, daily_data
 
@@ -826,7 +865,6 @@ async def handle_daily(event: GroupMessageEvent):
     except Exception as e:
         logger.error(f"生成日报失败: {e}")
         await daily_cmd.send(f"日报生成失败: {str(e)}")
-
 
 # 预览今日角色（不发送完整日报）
 character_cmd = on_command("今日角色", aliases={"角色预览"}, priority=5, block=True)
